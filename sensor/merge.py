@@ -1,7 +1,7 @@
 import os, re
 import numpy as np
 import cv2
-from filament_array import extract_filament_array
+from sensor.filament_array import extract_filament_array
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
 
 def number(name):
