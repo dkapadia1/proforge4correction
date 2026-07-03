@@ -178,5 +178,5 @@ def merge_no_filament_folder(
         "px_per_mm": px_per_mm,
     }
 if __name__ == "__main__":
-    out = merge_no_filament_folder(radius=35)
+    out = merge_no_filament_folder(radius=35, px_per_mm=26.13)
     

@@ -9,6 +9,8 @@ from numpy.lib.stride_tricks import sliding_window_view
 import cv2
 def to_gray(img):
     if img.ndim == 3:
+        ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
+        return np.exp(ycrcb[:, :, 0] / (ycrcb[:, :,  1] - ycrcb[:, :, 2] + 1e-9))
         return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         return img[:,:,2]
     return img.copy()
@@ -60,8 +62,8 @@ def get_preprocess_crop_info(image_path, degree=26.2):
     vertical_energy = np.abs(gy).mean(axis=1)
     peak = np.argmax(vertical_energy)
 
-    band_top = max(0, peak - 40)
-    band_bottom = min(H, peak + 40)
+    band_top = max(0, peak - 20)
+    band_bottom = min(H, peak + 20)
 
     roi_gray = gray[band_top:band_bottom, :]
     gy_roi = cv2.Sobel(roi_gray, cv2.CV_32F, dx=0, dy=1, ksize=3)
@@ -237,7 +239,7 @@ def path_to_grad(path, radius=25, degree=26.2):
     grad = make_general_laser_template(gray, use_derivative=True, radius=radius)
     return grad
 def extract_filament_array(folder=r"C:\Users\dhruv\Documents\dhruv_python\disc2accurate\\", 
-                           empty_i=2420-149, 
+                           empty_i=2419-149, 
                            full_i=1949-149, 
                            img_i=None, 
                            radius=25, 
@@ -253,7 +255,15 @@ def extract_filament_array(folder=r"C:\Users\dhruv\Documents\dhruv_python\disc2a
         print(random_path)
     random_pre = get_preprocess_crop_info(random_path, degree=26.2)
     random_gray = to_gray(random_pre['roi'])
-    
+    if __name__ == "__main__":
+        plt.figure()
+        plt.title("random_gray")
+        plt.imshow(random_gray)
+        plt.colorbar(label="intensity")
+        plt.figure()
+        plt.imshow(random_pre['roi'][:, :, ::-1])
+        plt.show()
+    return random_gray > 15, random_pre
     if grad is None:
         empty_gray = to_gray(preprocess_image(empty_path, degree=26.2))
         grad = make_general_laser_template(empty_gray, use_derivative=True, radius=radius)
@@ -293,7 +303,7 @@ if __name__ == "__main__":
     #     full_corr_img[radius:-radius, i] = match_template_1d_column(random_gray[:, i], full_grad, True)
     import time
     t = time.time()
-    mask, pack = extract_filament_array(img_i = 20)
+    mask, pack = extract_filament_array(img_i = 35)
     print(np.sum(mask))
     plt.figure()
     plt.title("mask")
