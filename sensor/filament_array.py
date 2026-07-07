@@ -10,7 +10,7 @@ import cv2
 def to_gray(img):
     if img.ndim == 3:
         ycrcb = cv2.cvtColor(img, cv2.COLOR_BGR2YCrCb)
-        return np.exp(ycrcb[:, :, 0] / (ycrcb[:, :,  1] - ycrcb[:, :, 2] + 1e-9))
+        return (ycrcb[:, :, 0] / np.clip((ycrcb[:, :,  1] - ycrcb[:, :, 2] + 1e-9), 12, None))
         return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         return img[:,:,2]
     return img.copy()
@@ -26,8 +26,8 @@ def preprocess_image(IMAGE_PATH, degree = 16.5):
     mag = np.abs(gx)
     vertical_energy = mag.mean(axis=1)
     peak = np.argmax(vertical_energy)
-    band_top = max(0, peak - 40)
-    band_bottom = min(gray.shape[0], peak + 40)
+    band_top = max(0, peak - 20)
+    band_bottom = min(gray.shape[0], peak + 20)
     width = 250
     roi = gray[band_top:band_bottom, :]
     gx_roi = cv2.Sobel(roi, cv2.CV_32F, dx=0, dy=1, ksize=3)
@@ -113,6 +113,7 @@ def undo_preprocess_mask(mask, info, radius=25):
     return unrot > 0
 def zscore(v):
     v = v.astype(float)
+    return v
     return (v - v.mean()) / (v.std() + 1e-9)
 
 
@@ -228,13 +229,15 @@ def match_template_1d_image(img_gray, template, use_derivative=False):
 
     mu = win.mean(axis=-1)
     sd = win.std(axis=-1) + 1e-9
-
+    mu = 0
+    sd = 1
     # same as: mean(zscore(patch) * template)
     return np.clip((np.tensordot(win, t, axes=([-1], [0])) / L - mu * t.mean()) / sd, 0, 1)
 def number(p):
     match = re.search(r'\d+', p)
     return int(match.group()) if match else -1
 def path_to_grad(path, radius=25, degree=26.2):
+    return None
     gray = to_gray(preprocess_image(path, degree=degree))
     grad = make_general_laser_template(gray, use_derivative=True, radius=radius)
     return grad
@@ -245,7 +248,8 @@ def extract_filament_array(folder=r"C:\Users\dhruv\Documents\dhruv_python\disc2a
                            radius=25, 
                            threshold=.07,
                            grad = None,
-                           full_grad = None):
+                           full_grad = None,
+                           return_score = False):
     photos = sorted(os.listdir(folder), key=number)
     empty_path = folder + photos[empty_i]
     full_path = folder + photos[full_i]
@@ -255,29 +259,48 @@ def extract_filament_array(folder=r"C:\Users\dhruv\Documents\dhruv_python\disc2a
         print(random_path)
     random_pre = get_preprocess_crop_info(random_path, degree=26.2)
     random_gray = to_gray(random_pre['roi'])
+    random_gray = cv2.blur(random_gray, (3, 3))
+    k = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    mask = cv2.morphologyEx(random_gray, cv2.MORPH_OPEN, k)
+    mask =  mask > 2
+    if return_score:
+        return mask, random_pre, random_gray
+    #return mask, random_pre
+    # if grad is None:
+    #     empty_gray = to_gray(preprocess_image(empty_path, degree=26.2))
+    #     grad = make_general_laser_template(empty_gray, use_derivative=True, radius=radius)
+    # if full_grad is None:
+    #     full_gray = to_gray(preprocess_image(full_path, degree=26.2))
+    #     full_grad = make_general_laser_template(full_gray, use_derivative=True, radius=radius)
+
+    # corr = match_template_1d_image(random_gray, grad, True)
+    # full_corr = match_template_1d_image(random_gray, full_grad, True)
+    # combin = full_corr * (1 - corr)
+    
+
     if __name__ == "__main__":
-        plt.figure()
-        plt.title("random_gray")
-        plt.imshow(random_gray)
-        plt.colorbar(label="intensity")
-        plt.figure()
-        plt.imshow(random_pre['roi'][:, :, ::-1])
-        plt.show()
-    return random_gray > 15, random_pre
-    if grad is None:
-        empty_gray = to_gray(preprocess_image(empty_path, degree=26.2))
-        grad = make_general_laser_template(empty_gray, use_derivative=True, radius=radius)
-    if full_grad is None:
-        full_gray = to_gray(preprocess_image(full_path, degree=26.2))
-        full_grad = make_general_laser_template(full_gray, use_derivative=True, radius=radius)
-
-    corr = match_template_1d_image(random_gray, grad, True)
-    full_corr = match_template_1d_image(random_gray, full_grad, True)
-
-    combin = full_corr * (1 - corr)
-    mask = np.mean(combin, axis=0, keepdims=True)
-    combin = np.broadcast_to(mask, combin.shape)
-    return combin < threshold, random_pre
+            plt.figure()
+            plt.title("random_gray")
+            plt.imshow(np.log(random_gray))
+            plt.colorbar(label="intensity")
+            plt.figure()
+            plt.imshow(mask)
+            plt.figure()
+            masked = np.zeros_like(random_pre["roi"])
+            masked[mask] = random_pre["roi"][mask]
+            plt.imshow(masked)
+            plt.figure()
+            plt.imshow(random_pre["roi"])
+    #         plt.figure()
+    #         plt.imshow(full_gray)
+    #         plt.figure()
+    #         plt.imshow(combin)
+    #         plt.colorbar(label="filament")
+    #         plt.figure()
+    #         plt.plot(full_grad)
+    #         plt.plot(grad)
+    #         plt.show()
+    return mask, random_pre
 if __name__ == "__main__":
     #change folder
     # folder = r"C:\Users\dhruv\Documents\dhruv_python\disc2accurate\\"
@@ -303,7 +326,7 @@ if __name__ == "__main__":
     #     full_corr_img[radius:-radius, i] = match_template_1d_column(random_gray[:, i], full_grad, True)
     import time
     t = time.time()
-    mask, pack = extract_filament_array(img_i = 35)
+    mask, pack = extract_filament_array(img_i = 101)
     print(np.sum(mask))
     plt.figure()
     plt.title("mask")

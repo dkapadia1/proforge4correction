@@ -166,16 +166,16 @@ def make_debug_video(
         if orig is None:
             continue
 
-        crop_mask, info = extract_filament_array(
+        crop_mask, info, score = extract_filament_array(
             folder=folder,
             img_i=i,
             grad=empty_grad,
             full_grad=full_grad,
             radius=radius,
             threshold=threshold,
+            return_score=True,
         )
         unrot_mask = undo_preprocess_mask(crop_mask, info, radius=radius)
-
         x, y = pose["x"], pose["y"]
         if swap_xy:
             x, y = y, x
@@ -218,4 +218,4 @@ def make_debug_video(
 
 
 if __name__ == "__main__":
-    make_debug_video()
+    make_debug_video(px_per_mm=26.13)

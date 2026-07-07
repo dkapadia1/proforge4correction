@@ -91,8 +91,8 @@ def merge_no_filament_folder(
 
     empty_path = os.path.join(folder, photos[empty_i])
     full_path = os.path.join(folder, photos[full_i])
-    empty_grad = path_to_grad(empty_path, radius=radius, degree=degree)
-    full_grad = path_to_grad(full_path, radius=radius, degree=degree)
+    empty_grad = None# path_to_grad(empty_path, radius=radius, degree=degree)
+    full_grad = None #path_to_grad(full_path, radius=radius, degree=degree)
 
     frames = []
     for i, name in enumerate(photos):
@@ -163,10 +163,10 @@ def merge_no_filament_folder(
     img = np.full((H, W), 127, dtype=np.uint8)
 
     # covered but not marked no-filament = assume filament
-    img[covered_canvas] = 0
+    img[covered_canvas] = 255
 
     # any positive model result wins
-    img[no_filament_canvas] = 255
+    img[no_filament_canvas] = 0
 
     cv2.imwrite(out_path, img)
 
