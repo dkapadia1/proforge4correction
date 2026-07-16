@@ -5,7 +5,7 @@ __pycache__/
 *.mp4
 # C extensions
 *.so
-
+.vscode
 # Distribution / packaging
 .Python
 build/
