@@ -286,8 +286,8 @@ def extract_filament_array(folder=r"C:\Users\dhruv\Documents\dhruv_python\disc2a
 
     if __name__ == "__main__":
             plt.figure()
-            plt.title("Y channel of a rotated laser")
-            plt.imshow((random_gray))
+            plt.title("random_gray")
+            plt.imshow(np.log(random_gray))
             plt.colorbar(label="intensity")
             plt.figure()
             plt.imshow(mask)
