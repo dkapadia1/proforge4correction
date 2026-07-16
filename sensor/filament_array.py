@@ -87,30 +87,31 @@ def get_preprocess_crop_info(image_path, degree=26.2):
 def undo_preprocess_mask(mask, info, radius=25):
     H, W = info["original_shape"]
     band_top, band_bottom, left, right = info["crop"]
-
-    rot_mask = np.zeros((H, W), dtype=np.uint8)
-
-    mh, mw = mask.shape
     roi_h = band_bottom - band_top
 
-    # match_template_1d_image returns height roi_h - 2*radius,
-    # so the mask y coords are centered at y=radius...roi_h-radius
-    y0 = band_top + radius
-    y1 = y0 + mh
+    rot_mask = np.zeros((H, W), dtype=np.uint8)
+    mh, mw = mask.shape
+
+    if mh == roi_h:
+        y0 = band_top                  # current threshold/morphology mask
+    elif mh == roi_h - 2 * radius:
+        y0 = band_top + radius         # old sliding-window/template mask
+    else:
+        y0 = band_top + max(0, (roi_h - mh) // 2)
+
     x0 = left
-    x1 = left + mw
+    y1 = min(H, y0 + mh)
+    x1 = min(W, x0 + mw)
 
-    rot_mask[y0:y1, x0:x1] = mask.astype(np.uint8) * 255
+    rot_mask[y0:y1, x0:x1] = mask[:y1-y0, :x1-x0].astype(np.uint8) * 255
 
-    unrot = cv2.warpAffine(
+    return cv2.warpAffine(
         rot_mask,
         info["Minv"],
         (W, H),
         flags=cv2.INTER_NEAREST,
         borderValue=0,
-    )
-
-    return unrot > 0
+    ) > 0
 def zscore(v):
     v = v.astype(float)
     return v
@@ -250,7 +251,12 @@ def extract_filament_array(folder=r"C:\Users\dhruv\Documents\dhruv_python\disc2a
                            grad = None,
                            full_grad = None,
                            return_score = False):
-    photos = sorted(os.listdir(folder), key=number)
+    IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
+
+    photos = sorted(
+        [f for f in os.listdir(folder) if os.path.splitext(f)[1].lower() in IMG_EXTS],
+        key=number,
+    )
     empty_path = folder + photos[empty_i]
     full_path = folder + photos[full_i]
     
@@ -280,8 +286,8 @@ def extract_filament_array(folder=r"C:\Users\dhruv\Documents\dhruv_python\disc2a
 
     if __name__ == "__main__":
             plt.figure()
-            plt.title("random_gray")
-            plt.imshow(np.log(random_gray))
+            plt.title("Y channel of a rotated laser")
+            plt.imshow((random_gray))
             plt.colorbar(label="intensity")
             plt.figure()
             plt.imshow(mask)

@@ -1,7 +1,7 @@
 import os, re
 import numpy as np
 import cv2
-from filament_array import extract_filament_array, path_to_grad, undo_preprocess_mask
+from filament_array import extract_filament_array, undo_preprocess_mask
 from tqdm import tqdm
 IMG_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff"}
 
